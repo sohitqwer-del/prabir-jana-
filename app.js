@@ -145,7 +145,6 @@
         '<div class="spool-spin" style="animation:spool 6s ease-in-out infinite">' + spoolIcon("var(--accent)", 46) + '</div>' +
         '<div class="portrait">' +
           '<div class="inner"><img src="assets/img/prabir.png" alt="Dr. Prabir Jana"></div>' +
-          '<span class="badge">EST. 1993 · NIFT DELHI</span>' +
         '</div>' +
         '<div class="seam-strip">' + stitchScene() + '</div>' +
       '</div>' +
@@ -197,21 +196,34 @@
     '</section>';
   }
 
+  function matchPost(n) {
+    var q = state.query.trim().toLowerCase();
+    var cf = state.catFilter;
+    if (cf && n.cat !== cf) return false;
+    if (!q) return true;
+    var hay = (n.t + " " + n.excerpt + " " + (n.body || "") + " " + catName(n.cat) + " " + (n.tags || []).join(" ")).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }
+  function matchedPosts() { return POSTS.filter(matchPost); }
+
   function buildGraph() {
-    var cx0 = 460, cy0 = 320, R = 225;
+    var cx0 = 480, cy0 = 360, R = 252;
     var byCat = {};
     POSTS.forEach(function (a) { (byCat[a.cat] = byCat[a.cat] || []).push(a); });
     var nodes = [];
+    var GOLDEN = 2.399963229728653;   // golden angle → even sunflower spread
     CATS.forEach(function (c, ci) {
       var ang = (ci / CATS.length) * Math.PI * 2 - Math.PI / 2;
       var ccx = cx0 + Math.cos(ang) * R, ccy = cy0 + Math.sin(ang) * R;
       var list = byCat[c.key] || [];
-      var rr = list.length > 1 ? Math.min(74, 24 + list.length * 7) : 0;
+      var rr = list.length > 1 ? Math.min(150, 26 + Math.sqrt(list.length) * 17) : 0;
       list.forEach(function (a, i) {
-        var aa = (i / Math.max(1, list.length)) * Math.PI * 2 + ci * 0.7;
+        var t = i + 1;
+        var rad = rr * Math.sqrt(t / Math.max(1, list.length));
+        var aa = t * GOLDEN + ci * 0.9;
         nodes.push(Object.assign({}, a, {
           color: c.color, catName: c.name,
-          x: Math.round(ccx + Math.cos(aa) * rr), y: Math.round(ccy + Math.sin(aa) * rr)
+          x: Math.round(ccx + Math.cos(aa) * rad), y: Math.round(ccy + Math.sin(aa) * rad)
         }));
       });
     });
@@ -231,40 +243,48 @@
     var neighbors = {};
     if (sel != null) edgeDefs.forEach(function (e) { if (e.a === sel) neighbors[e.b] = 1; if (e.b === sel) neighbors[e.a] = 1; });
 
-    function matches(n) {
-      if (cf && n.cat !== cf) return false;
-      if (!q) return true;
-      var hay = (n.t + " " + n.excerpt + " " + n.catName + " " + (n.tags || []).join(" ")).toLowerCase();
-      return hay.indexOf(q) >= 0;
-    }
+    var matchCount = nodes.filter(matchPost).length;
+    var showLabels = (q || cf) && matchCount <= 18;   // only label when the field is sparse enough to read
 
     var edges = edgeDefs.map(function (e) {
       var active = sel != null && (e.a === sel || e.b === sel);
       return Object.assign({}, e, {
         stroke: active ? selColor : "#CBB79A",
-        width: active ? 2.4 : 1.1,
-        opacity: sel == null ? (q || cf ? 0.16 : 0.38) : (active ? 0.85 : 0.07)
+        width: active ? 2.4 : 0.9,
+        opacity: sel == null ? (q || cf ? 0.1 : 0.22) : (active ? 0.85 : 0.05)
       });
     });
     var gnodes = nodes.map(function (n) {
       var isSel = n.id === sel;
       var isNb = !!neighbors[n.id];
-      var filtered = matches(n);
+      var filtered = matchPost(n);
       var op, lblop;
-      if (sel != null) { op = (isSel || isNb) ? 1 : 0.18; lblop = (isSel || isNb) ? 1 : 0.1; }
-      else if (q || cf) { op = filtered ? 1 : 0.12; lblop = filtered ? 1 : 0; }
-      else { op = 1; lblop = 0.55; }
+      if (sel != null) { op = (isSel || isNb) ? 1 : 0.14; lblop = (isSel || isNb) ? 1 : 0; }
+      else if (q || cf) { op = filtered ? 1 : 0.09; lblop = (filtered && showLabels) ? 1 : 0; }
+      else { op = 1; lblop = 0; }
       return Object.assign({}, n, {
-        r: isSel ? 16 : 11, ring: isSel ? 23 : 16, ringOp: isSel ? 0.6 : 0,
-        op: op, lblop: lblop, labelY: n.y + (isSel ? 16 : 11) + 14,
+        r: isSel ? 15 : 8, ring: isSel ? 22 : 13, ringOp: isSel ? 0.6 : 0,
+        op: op, lblop: lblop, labelY: n.y + (isSel ? 15 : 8) + 13,
         short: (n.t.length > 22 ? n.t.slice(0, 20) + "…" : n.t)
       });
     });
     return { edges: edges, nodes: gnodes };
   }
 
+  function listCard(p) {
+    var col = catColor(p.cat);
+    var on = p.id === state.selectedNode;
+    return '<article class="note' + (on ? " sel" : "") + '" data-node="' + p.id + '" data-reveal>' +
+      '<span class="cat" style="color:' + col + '"><span class="dot" style="background:' + col + '"></span>' + esc(catName(p.cat)) + '</span>' +
+      '<h3>' + esc(p.t) + '</h3>' +
+      '<p>' + esc(p.excerpt) + '</p>' +
+      '<div class="meta"><span>' + esc(p.date) + '</span><span>·</span><span>' + esc(p.read) + ' read</span></div>' +
+    '</article>';
+  }
+
   function screenWriting() {
     var g = buildGraph();
+    var matched = matchedPosts();
     var legend = CATS.map(function (c) {
       var on = state.catFilter === c.key;
       return '<button class="chip" data-cat="' + c.key + '" style="cursor:pointer;' + (on ? "border-color:" + c.color + ";box-shadow:0 0 0 2px " + c.color + "33" : "") + '"><span class="dot" style="background:' + c.color + '"></span>' + esc(c.name) + '</button>';
@@ -301,27 +321,38 @@
       '<p style="font-size:16px;color:var(--ink-3);max-width:46em;margin:10px 0 22px">Everything he shared, mapped by theme. Tap a node to follow the threads — related pieces light up across the floor. Or search to pull a single stitch loose.</p>' +
       '<div class="toolbar">' +
         '<label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9A8268" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' +
-        '<input id="gsearch" type="text" placeholder="Search his writing — PMTS, lean, automation, India…" value="' + esc(state.query) + '"></label>' +
+        '<input id="gsearch" type="text" placeholder="Search his writing — PMTS, lean, automation, India…" value="' + esc(state.query) + '">' +
+        (state.query || state.catFilter ? '<button class="search-x" data-reset="1" aria-label="Clear search">✕</button>' : "") +
+        '</label>' +
+        '<span class="search-count">' + matched.length + ' of ' + POSTS.length + '</span>' +
       '</div>' +
       '<div class="legend">' + legend + '</div>' +
       '<div class="graph-wrap">' +
         '<div class="graph-box">' +
-          '<svg viewBox="0 0 920 640">' +
+          '<svg viewBox="0 0 960 720">' +
             g.edges.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.stroke + '" stroke-width="' + e.width + '" opacity="' + e.opacity + '"/>'; }).join("") +
-            '<circle cx="460" cy="320" r="34" fill="#3A2C22"/>' +
-            '<circle cx="460" cy="320" r="34" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
-            '<text x="460" y="317" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="13" font-style="italic">Prabir</text>' +
-            '<text x="460" y="331" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="8" letter-spacing="1">JANA</text>' +
+            '<circle cx="480" cy="360" r="34" fill="#3A2C22"/>' +
+            '<circle cx="480" cy="360" r="34" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
+            '<text x="480" y="357" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="13" font-style="italic">Prabir</text>' +
+            '<text x="480" y="371" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="8" letter-spacing="1">JANA</text>' +
             g.nodes.map(function (n) {
               return '<g class="gnode" data-node="' + n.id + '">' +
                 '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + n.r + '" fill="' + n.color + '" opacity="' + n.op + '"/>' +
                 '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + n.ring + '" fill="none" stroke="' + n.color + '" stroke-width="2" opacity="' + n.ringOp + '"/>' +
-                '<text x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#5C4A3C" font-family="Spline Sans Mono,monospace" font-size="9" opacity="' + n.lblop + '">' + esc(n.short) + '</text>' +
+                (n.lblop > 0 ? '<text x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#5C4A3C" font-family="Spline Sans Mono,monospace" font-size="9" opacity="' + n.lblop + '">' + esc(n.short) + '</text>' : "") +
               '</g>';
             }).join("") +
           '</svg>' +
         '</div>' +
         '<div class="detail">' + detail + '</div>' +
+      '</div>' +
+      '<div class="results-head">' +
+        '<span class="eyebrow">' + (state.query || state.catFilter ? "Search results" : "Every piece, in full") + '</span>' +
+        '<span class="search-count">' + matched.length + (matched.length === 1 ? " piece" : " pieces") + '</span>' +
+      '</div>' +
+      '<div class="card-grid result-grid">' +
+        (matched.length ? matched.map(listCard).join("") :
+          '<div class="no-results">Nothing matches “' + esc(state.query) + '”. Try another word, or clear the search.</div>') +
       '</div>' +
     '</section>';
   }
@@ -472,12 +503,22 @@
         setTimeout(function () { state.selectedNode = id; render(); }, 340);
       });
     });
-    // graph nodes
+    // graph nodes + list cards
     app.querySelectorAll("[data-node]").forEach(function (g) {
-      g.addEventListener("click", function () { state.selectedNode = parseInt(g.getAttribute("data-node"), 10); render(); });
+      g.addEventListener("click", function () {
+        state.selectedNode = parseInt(g.getAttribute("data-node"), 10);
+        var fromList = g.classList.contains("note");
+        render();
+        if (fromList) {
+          var box = app.querySelector(".graph-wrap");
+          if (box) try { box.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+        }
+      });
     });
     var clr = app.querySelector("[data-clear]");
     if (clr) clr.addEventListener("click", function () { state.selectedNode = null; render(); });
+    var rst = app.querySelector("[data-reset]");
+    if (rst) rst.addEventListener("click", function () { state.query = ""; state.catFilter = null; state.selectedNode = null; render(); });
     app.querySelectorAll("[data-cat]").forEach(function (c) {
       c.addEventListener("click", function () {
         var k = c.getAttribute("data-cat");

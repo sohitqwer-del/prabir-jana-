@@ -181,6 +181,12 @@ try:
 except Exception:
     comp = []
 
+# Garbled PDF/clean copies we replace with a clean manual version (despaced fragments)
+DROP_SIGNATURES = ["scriptingindia", "technoworld"]
+def has_drop_sig(text):
+    flat = re.sub(r"\s+", "", (text or "").lower())
+    return any(sig in flat for sig in DROP_SIGNATURES)
+
 pdf_unique = []
 pdf_fps    = set()
 
@@ -190,19 +196,27 @@ for p in pdf_posts:
     raw = re.sub(r"^\d+[hd]\s*[•··]\s*[^\n]+\n", "", raw)
     ct  = clean_text(raw)
     fp  = fingerprint(ct)
-    if fp in clean_fps or fp in pdf_fps or len(ct) < 150:
+    if fp in clean_fps or fp in pdf_fps or len(ct) < 150 or has_drop_sig(ct):
         continue
     pdf_fps.add(fp)
     pdf_unique.append({"raw": raw, "cleaned": ct, "meta": p})
 
 print(f"Additional PDF posts: {len(pdf_unique)}")
 
+# drop any clean-source copy of a manual post too
+for aid in list(clean_by_id.keys()):
+    p = clean_by_id[aid]
+    if has_drop_sig((p.get("full_text") or p.get("text") or "")):
+        del clean_by_id[aid]
+
 # ══════════════════════════════════════════════════════════════════════════════
-# 3. Manual posts (high-quality text provided directly, not in any source file)
+# 3. Manual posts — clean text provided directly, pinned with an explicit date
 # ══════════════════════════════════════════════════════════════════════════════
 MANUAL_POSTS = [
     {
         "title": "Technosport is scripting India's MMF story",
+        "date": "Jun 2026",
+        "ts":   int(datetime.datetime(2026, 6, 1).timestamp()),  # pin near the top of the feed
         "full_text": """Technosport is scripting India's MMF story
 
 Feel proud to be part of the inauguration of Technoworld today. And intentionally I choose a poster rather than any ceremonial picture. The below poster that attracted many eyeballs, "The T-shirt that built everything" talks about the product that builds the brand. I would rather say meet Sunil JhunJhunWala "The man who made the difference"
@@ -212,24 +226,35 @@ I have been witnessing the evolution of Technosport since June 2022 when my firs
 The next few years were a rollercoaster ride....Technosport was everywhere. While everyone cribbed about the lack of MMF infrastructure in India, Sunil again took the bull by the horn...built fabric infrastructure from scratch. Today Technosport boasts some of India's first technology investment in MMF fabric manufacturing. They are not only one of the fastest growing sportswear brands, but also careful about how they manufacture.
 
 In the coming years we may see many more record breaking performances by Technosport. Well done Sunil JhunJhunWala, Puspen Maity, Anirudh Pratap, amit kumar santhalia, Lokesh Radhakrishnan and the whole team.""",
-        "activity_id": "7464562937907552256",  # from source file
         "url": "",
         "og_image": "",
     },
 ]
-# Add any manual post whose fingerprint isn't already captured
-for mp in MANUAL_POSTS:
-    aid = str(mp.get("activity_id", "")).strip()
-    fp  = fingerprint(mp["full_text"])
-    if aid not in clean_by_id and fp not in clean_fps:
-        clean_by_id[aid] = mp
-        clean_fps.add(fp)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 4. Build unified post list
 # ══════════════════════════════════════════════════════════════════════════════
 items = []
 pid   = 0
+
+# --- Manual posts first (explicit dates) ---
+for mp in MANUAL_POSTS:
+    ft  = mp["full_text"].strip()
+    pid += 1
+    cat = categorize((mp.get("title", "") + " " + ft))
+    items.append({
+        "id":      pid,
+        "cat":     cat,
+        "t":       mp.get("title") or title_case_clean("", ft),
+        "date":    mp.get("date", "Recent"),
+        "ts":      mp.get("ts", 0),
+        "read":    read_time(len(ft)),
+        "excerpt": make_excerpt(ft),
+        "body":    clean_text(ft),
+        "tags":    extract_tags(ft) or [next(c["name"] for c in CATS if c["key"] == cat)],
+        "url":     mp.get("url", ""),
+        "img":     mp.get("og_image") or "",
+    })
 
 # --- Clean posts (have activity IDs → exact dates) ---
 for aid, p in clean_by_id.items():
@@ -276,8 +301,8 @@ for entry in pdf_unique:
         "img":     "",
     })
 
-# sort: timestamped posts first (newest → oldest), then archive posts
-items.sort(key=lambda x: (0 if x["ts"] == 0 else 1, -x["ts"]))
+# sort: real-dated posts first (newest → oldest), undated archive posts last
+items.sort(key=lambda x: (1 if x["ts"] == 0 else 0, -x["ts"]))
 for i, it in enumerate(items, 1):
     it["id"] = i
 
