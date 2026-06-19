@@ -13,6 +13,6 @@
    4. Paste the two values below and re-deploy.
    ============================================================ */
 window.TRIBUTE_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: ""
+  SUPABASE_URL: "https://fiyjmgqvgjmwhcyhltus.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpeWptZ3F2Z2ptd2hjeWhsdHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NjQ2OTMsImV4cCI6MjA5NzQ0MDY5M30.2Opk7iA7in1EBZpugXz7FUcPoleIR_vbiBVIAX2OFbs"
 };
