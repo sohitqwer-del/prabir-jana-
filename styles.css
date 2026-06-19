@@ -293,6 +293,10 @@ textarea.fld{margin-top:14px;resize:vertical;}
 .pcard .msg{font-size:15px;line-height:1.6;color:var(--ink);margin:0 0 14px;font-family:'Newsreader',serif;}
 .pcard .nm{font-weight:600;font-size:14px;color:var(--ink);}
 .pcard .rl{font-family:'Spline Sans Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
+.wall-none{columns:auto !important;}
+.wall-empty{text-align:center;max-width:30em;margin:10px auto 0;padding:30px 0;}
+.wall-empty h3{font-size:22px;margin:14px 0 8px;color:var(--ink);}
+.wall-empty p{font-size:14px;line-height:1.6;color:var(--ink-3);margin:0 auto;}
 
 /* ---------- message ---------- */
 .msg-card{background:var(--card);border:1px solid var(--line-2);border-radius:22px;padding:30px;margin-top:30px;}

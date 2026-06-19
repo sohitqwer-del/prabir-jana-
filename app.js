@@ -12,15 +12,6 @@
   var catName = function (k) { var c = CATS.find(function (x) { return x.key === k; }); return c ? c.name : ""; };
   var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (m) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[m]; }); };
 
-  var DEFAULT_PRAISES = [
-    { id: "d1", name: "Anjali Mehra", role: "Class of 2009, NIFT", message: "Sir turned a dry time-study lecture into the most useful skill I carry into every factory. The way he could spot a skipped stitch from across the room? Legendary." },
-    { id: "d2", name: "Rohit Bansal", role: "Production Head, Gurugram", message: "He taught me to respect the operator before the spreadsheet. Everything good in my career started in his classroom." },
-    { id: "d3", name: "Dr. Sunita Rao", role: "Colleague, NIFT", message: "Thirty years of generosity with his time, his ideas, and his floor walks. The corridor will be quieter without him." },
-    { id: "d4", name: "Imran Khan", role: "Founder, KnitWell", message: "Half my factory's IE practices are footnotes to Prabir's papers. We owe him more than we can ever repay." },
-    { id: "d5", name: "Meera Iyer", role: "Class of 2017", message: "Walked into his office nervous, walked out with a research topic and a plan. Pure warmth." },
-    { id: "d6", name: "Karthik Nair", role: "Lean Consultant", message: "Rigorous on the data, gentle with people. A rare combination. Happy retirement, Sir." }
-  ];
-
   var state = {
     screen: "landing",
     selectedNode: null,
@@ -490,15 +481,20 @@
   }
 
   function screenPraises() {
-    var all = state.added.concat(DEFAULT_PRAISES);
-    var wall = all.map(function (p) {
+    var all = state.added;
+    var wall = all.length ? all.map(function (p) {
       return '<div class="pcard' + (p.isNew ? " new" : "") + '">' +
         '<div class="qmark">“</div>' +
         '<p class="msg">' + esc(p.message) + '</p>' +
         '<div class="nm">' + esc(p.name) + '</div>' +
         '<div class="rl">' + esc(p.role || "Friend & well-wisher") + '</div>' +
       '</div>';
-    }).join("");
+    }).join("") :
+      '<div class="wall-empty" data-reveal>' +
+        '<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="opacity:.85"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<h3 class="serif">Be the first to leave a word</h3>' +
+        '<p>The wall is empty for now. Add the first message above and it will live here for everyone to read.</p>' +
+      '</div>';
     return '' +
     '<section class="wrap">' +
       '<div class="praise-head" data-reveal>' +
@@ -513,7 +509,7 @@
         '<div class="form-foot"><span class="hint" id="pHint">Your message stays on the wall for everyone to see.</span>' +
         '<button class="btn btn-primary" id="pAdd" style="font-size:14px;padding:13px 24px">Add to the wall →</button></div>' +
       '</div>' +
-      '<div class="wall">' + wall + '</div>' +
+      '<div class="' + (all.length ? "wall" : "wall wall-none") + '">' + wall + '</div>' +
     '</section>';
   }
 
