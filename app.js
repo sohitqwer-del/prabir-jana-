@@ -322,9 +322,9 @@
       else if (q || cf) { op = filtered ? 1 : 0.07; lit = filtered && showLabels; }
       else { op = 1; lit = false; }
       return Object.assign({}, n, {
-        r: isSel ? 13 : 7, ring: isSel ? 20 : 12, ringOp: isSel ? 0.7 : 0,
-        op: op, lit: lit, labelY: n.y + (isSel ? 13 : 7) + 12,
-        short: (n.t.length > 24 ? n.t.slice(0, 22) + "…" : n.t)
+        r: isSel ? 15 : 8.5, ring: isSel ? 24 : 15, ringOp: isSel ? 0.7 : 0,
+        op: op, lit: lit, labelY: n.y + (isSel ? 15 : 8.5) + 26,
+        short: (n.t.length > 26 ? n.t.slice(0, 24) + "…" : n.t)
       });
     });
     return { CX: CX, CY: CY, branches: branches, trunk: trunk, twigs: twigs, links: links, nodes: gnodes };
@@ -397,32 +397,35 @@
           '<svg id="graphSvg" viewBox="0 0 1440 1120">' +
             '<g class="viewport" id="viewport" transform="' + viewTransform() + '">' +
               // mind-map trunks (centre → each branch)
-              g.trunk.map(function (t) { return '<path d="' + t.d + '" fill="none" stroke="' + t.color + '" stroke-width="' + t.width + '" opacity="' + t.opacity + '" stroke-linecap="round"/>'; }).join("") +
+              g.trunk.map(function (t) { return '<path class="trunk" d="' + t.d + '" fill="none" stroke="' + t.color + '" stroke-width="' + t.width + '" opacity="' + t.opacity + '" stroke-linecap="round"/>'; }).join("") +
               // twigs (branch → each post)
               g.twigs.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.color + '" stroke-width="' + e.width + '" opacity="' + e.opacity + '"/>'; }).join("") +
               // glowing associations from the selected post
-              g.links.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.color + '" stroke-width="2.2" opacity="0.8" stroke-dasharray="3 4"/>'; }).join("") +
+              g.links.map(function (e) { return '<line class="assoc" x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.color + '" stroke-width="2.6" opacity="0.85" stroke-dasharray="5 6"/>'; }).join("") +
               // branch hubs with labels (mind-map limbs)
               g.branches.map(function (b) {
                 var on = state.catFilter === b.key || (g.nodes.some(function (n) { return n.id === state.selectedNode && n.branch === b.key; }));
-                return '<g class="ghub" data-cat="' + b.key + '">' +
-                  '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 17 : 14) + '" fill="' + b.color + '"/>' +
-                  '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 24 : 20) + '" fill="none" stroke="' + b.color + '" stroke-width="1.5" opacity="' + (on ? 0.5 : 0.25) + '"/>' +
-                  '<text x="' + b.x + '" y="' + (b.y + 4) + '" text-anchor="middle" fill="#fff" font-family="Spline Sans Mono,monospace" font-size="11" font-weight="600">' + b.count + '</text>' +
-                  '<text x="' + b.x + '" y="' + (b.y - 26) + '" text-anchor="middle" fill="#5C4A3C" font-family="Spline Sans Mono,monospace" font-size="10.5" letter-spacing=".5">' + esc(b.name) + '</text>' +
+                return '<g class="ghub' + (on ? " on" : "") + '" data-cat="' + b.key + '">' +
+                  '<circle class="hub-ring" cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 40 : 34) + '" fill="none" stroke="' + b.color + '" stroke-width="2" opacity="' + (on ? 0.5 : 0.22) + '"/>' +
+                  '<circle class="hub-core" cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 27 : 23) + '" fill="' + b.color + '"/>' +
+                  '<text x="' + b.x + '" y="' + (b.y + 7) + '" text-anchor="middle" fill="#fff" font-family="Spline Sans Mono,monospace" font-size="20" font-weight="600">' + b.count + '</text>' +
+                  '<text class="blbl" x="' + b.x + '" y="' + (b.y - 44) + '" text-anchor="middle" fill="#3A2C22" font-family="Spline Sans Mono,monospace" font-size="21" font-weight="600" letter-spacing=".5">' + esc(b.name) + '</text>' +
                 '</g>';
               }).join("") +
               // central hub
-              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="38" fill="#3A2C22"/>' +
-              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="38" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
-              '<text x="' + g.CX + '" y="' + (g.CY - 3) + '" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="15" font-style="italic">Prabir</text>' +
-              '<text x="' + g.CX + '" y="' + (g.CY + 13) + '" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="9" letter-spacing="1.5">JANA</text>' +
-              // post nodes (honeycomb cells)
+              '<circle class="core-glow" cx="' + g.CX + '" cy="' + g.CY + '" r="58" fill="' + ACCENT + '" opacity="0.12"/>' +
+              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="50" fill="#3A2C22"/>' +
+              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="50" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="5 6" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
+              '<text x="' + g.CX + '" y="' + (g.CY - 4) + '" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="26" font-style="italic">Prabir</text>' +
+              '<text x="' + g.CX + '" y="' + (g.CY + 18) + '" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="15" letter-spacing="2">JANA</text>' +
+              // post nodes (honeycomb cells) — gently drifting
               g.nodes.map(function (n) {
-                return '<g class="gnode' + (n.lit ? " lit" : "") + '" data-node="' + n.id + '">' +
-                  (n.ringOp ? '<circle class="halo" cx="' + n.x + '" cy="' + n.y + '" r="' + n.ring + '" fill="none" stroke="' + n.color + '" stroke-width="2" opacity="' + n.ringOp + '"/>' : "") +
+                var dur = (6 + (n.id % 45) / 9).toFixed(2);
+                var del = (-(n.id % 70) / 9).toFixed(2);
+                return '<g class="gnode' + (n.lit ? " lit" : "") + '" data-node="' + n.id + '" style="animation-duration:' + dur + 's;animation-delay:' + del + 's">' +
+                  (n.ringOp ? '<circle class="halo" cx="' + n.x + '" cy="' + n.y + '" r="' + n.ring + '" fill="none" stroke="' + n.color + '" stroke-width="2.5" opacity="' + n.ringOp + '"/>' : "") +
                   '<circle class="node" cx="' + n.x + '" cy="' + n.y + '" r="' + n.r + '" fill="' + n.color + '" opacity="' + n.op + '"/>' +
-                  '<text class="lbl" x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#3A2C22" font-family="Spline Sans Mono,monospace" font-size="9.5">' + esc(n.short) + '</text>' +
+                  '<text class="lbl" x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#3A2C22" font-family="Spline Sans Mono,monospace" font-size="20" font-weight="500">' + esc(n.short) + '</text>' +
                 '</g>';
               }).join("") +
             '</g>' +

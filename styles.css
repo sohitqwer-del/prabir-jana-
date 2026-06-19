@@ -204,16 +204,33 @@ h2.title{font-family:'Newsreader',serif;font-weight:500;font-size:clamp(32px,4vw
 .zoom-ctrl{position:absolute;right:12px;top:12px;z-index:3;display:flex;flex-direction:column;gap:6px;}
 .zoom-ctrl button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);font-size:18px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 10px rgba(58,44,34,.1);transition:background .15s,transform .15s;}
 .zoom-ctrl button:hover{background:#F7EEDF;transform:translateY(-1px);}
-.gnode{cursor:pointer;}
+.gnode{cursor:pointer;animation-name:floatCell;animation-timing-function:ease-in-out;animation-iteration-count:infinite;transform-box:view-box;}
 .gnode .node{transition:transform .16s ease,opacity .3s;transform-box:fill-box;transform-origin:center;}
-.gnode:hover .node{transform:scale(1.55);}
-.gnode .lbl{opacity:0;transition:opacity .18s;pointer-events:none;}
+.gnode:hover{animation-play-state:paused;}
+.gnode:hover .node{transform:scale(1.7);}
+.gnode .lbl{opacity:0;transition:opacity .18s;pointer-events:none;paint-order:stroke;stroke:#FBF4E7;stroke-width:4px;stroke-linejoin:round;}
 .gnode:hover .lbl,.gnode.lit .lbl{opacity:1;}
-.gnode .halo{animation:haloPulse 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+.gnode:hover .lbl{font-weight:600;}
+.gnode .halo{animation:haloPulse 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes floatCell{0%{transform:translate(0,0);}25%{transform:translate(2.5px,-3px);}50%{transform:translate(-1.5px,-4.5px);}75%{transform:translate(-3px,-1.5px);}100%{transform:translate(0,0);}}
+@keyframes haloPulse{0%,100%{transform:scale(1);opacity:.7;}50%{transform:scale(1.16);opacity:.32;}}
+
 .ghub{cursor:pointer;}
 .ghub circle{transition:r .18s;}
 .ghub text{pointer-events:none;}
-@keyframes haloPulse{0%,100%{transform:scale(1);opacity:.7;}50%{transform:scale(1.12);opacity:.35;}}
+.ghub .blbl{paint-order:stroke;stroke:#FBF4E7;stroke-width:5px;stroke-linejoin:round;}
+.ghub .hub-core{transition:transform .2s;transform-box:fill-box;transform-origin:center;}
+.ghub:hover .hub-core{transform:scale(1.12);}
+.ghub .hub-ring{animation:hubBreath 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+.ghub.on .hub-ring{animation-duration:1.8s;}
+@keyframes hubBreath{0%,100%{transform:scale(1);}50%{transform:scale(1.14);}}
+
+/* central hub + flowing energy lines */
+.core-glow{animation:coreGlow 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes coreGlow{0%,100%{transform:scale(1);opacity:.12;}50%{transform:scale(1.25);opacity:.22;}}
+.trunk{stroke-dasharray:18 12;animation:dashFlow 1.6s linear infinite;}
+.assoc{animation:dashFlow 0.9s linear infinite;}
+@keyframes dashFlow{to{stroke-dashoffset:-30;}}
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
 .search{flex:1;min-width:200px;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line-2);border-radius:12px;padding:10px 14px;}
