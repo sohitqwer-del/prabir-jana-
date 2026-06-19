@@ -26,6 +26,7 @@
     selectedNode: null,
     query: "",
     catFilter: null,
+    view: { z: 1, x: 0, y: 0 },   // graph pan/zoom (persists across re-renders)
     added: [],
     msgSent: false, sentName: ""
   };
@@ -66,6 +67,7 @@
     wipe.classList.remove("run"); void wipe.offsetWidth; wipe.classList.add("run");
     setTimeout(function () {
       state.screen = screen; state.selectedNode = null; state.query = ""; state.catFilter = null;
+      state.view = { z: 1, x: 0, y: 0 };
       render();
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
     }, 330);
@@ -162,8 +164,11 @@
   }
 
   function screenHome() {
-    var featured = POSTS[0];
-    var recent = POSTS.slice(1, 7);
+    // highlight the "last 100 days at NIFT" farewell post if present
+    var featIdx = POSTS.findIndex(function (p) { return /100 days/i.test(p.t); });
+    if (featIdx < 0) featIdx = 0;
+    var featured = POSTS[featIdx];
+    var recent = POSTS.filter(function (_, i) { return i !== featIdx; }).slice(0, 6);
     return '' +
     '<section class="wrap">' +
       '<div class="row-head" data-reveal>' +
@@ -196,6 +201,11 @@
     '</section>';
   }
 
+  function viewTransform() {
+    var v = state.view;
+    return "translate(" + v.x + " " + v.y + ") scale(" + v.z + ")";
+  }
+
   function matchPost(n) {
     var q = state.query.trim().toLowerCase();
     var cf = state.catFilter;
@@ -206,69 +216,118 @@
   }
   function matchedPosts() { return POSTS.filter(matchPost); }
 
+  // ---- honeycomb (hex-spiral) cell generator: beehive packing ----
+  var CUBE_DIRS = [[1, -1, 0], [1, 0, -1], [0, 1, -1], [-1, 1, 0], [-1, 0, 1], [0, -1, 1]];
+  function hexCells(n) {
+    var out = [[0, 0, 0]];
+    var radius = 1;
+    while (out.length < n) {
+      var hx = CUBE_DIRS[4][0] * radius, hy = CUBE_DIRS[4][1] * radius, hz = CUBE_DIRS[4][2] * radius;
+      for (var i = 0; i < 6; i++) {
+        for (var j = 0; j < radius; j++) {
+          if (out.length < n) out.push([hx, hy, hz]);
+          hx += CUBE_DIRS[i][0]; hy += CUBE_DIRS[i][1]; hz += CUBE_DIRS[i][2];
+        }
+      }
+      radius++;
+    }
+    return out;
+  }
+  function hexPixel(cell, size) {            // pointy-top axial → pixel
+    var q = cell[0], r = cell[2];
+    return { x: size * Math.sqrt(3) * (q + r / 2), y: size * 1.5 * r };
+  }
+
   function buildGraph() {
-    var cx0 = 480, cy0 = 360, R = 252;
+    var CX = 720, CY = 560, BRANCH_R = 430, HEX = 21;
     var byCat = {};
     POSTS.forEach(function (a) { (byCat[a.cat] = byCat[a.cat] || []).push(a); });
-    var nodes = [];
-    var GOLDEN = 2.399963229728653;   // golden angle → even sunflower spread
+
+    var branches = [];   // the 6 main mind-map limbs
+    var nodes = [];      // every post, hex-packed around its branch
     CATS.forEach(function (c, ci) {
       var ang = (ci / CATS.length) * Math.PI * 2 - Math.PI / 2;
-      var ccx = cx0 + Math.cos(ang) * R, ccy = cy0 + Math.sin(ang) * R;
+      var bx = CX + Math.cos(ang) * BRANCH_R, by = CY + Math.sin(ang) * BRANCH_R;
       var list = byCat[c.key] || [];
-      var rr = list.length > 1 ? Math.min(150, 26 + Math.sqrt(list.length) * 17) : 0;
+      branches.push({ key: c.key, name: c.name, color: c.color, x: Math.round(bx), y: Math.round(by), count: list.length, ang: ang });
+      var cells = hexCells(list.length);
+      // rotate the honeycomb so it fans outward from the centre
+      var rot = ang + Math.PI / 2;
+      var cosR = Math.cos(rot), sinR = Math.sin(rot);
       list.forEach(function (a, i) {
-        var t = i + 1;
-        var rad = rr * Math.sqrt(t / Math.max(1, list.length));
-        var aa = t * GOLDEN + ci * 0.9;
+        var p = hexPixel(cells[i], HEX);
+        var rx = p.x * cosR - p.y * sinR, ry = p.x * sinR + p.y * cosR;
         nodes.push(Object.assign({}, a, {
-          color: c.color, catName: c.name,
-          x: Math.round(ccx + Math.cos(aa) * rad), y: Math.round(ccy + Math.sin(aa) * rad)
+          color: c.color, catName: c.name, branch: c.key,
+          x: Math.round(bx + rx), y: Math.round(by + ry)
         }));
       });
     });
     var byId = {}; nodes.forEach(function (n) { byId[n.id] = n; });
-    var edgeDefs = [];
-    CATS.forEach(function (c) {
-      var list = (byCat[c.key] || []).map(function (a) { return byId[a.id]; });
-      if (list.length) edgeDefs.push({ a: "hub", b: list[0].id, x1: cx0, y1: cy0, x2: list[0].x, y2: list[0].y });
-      for (var i = 1; i < list.length; i++) edgeDefs.push({ a: list[0].id, b: list[i].id, x1: list[0].x, y1: list[0].y, x2: list[i].x, y2: list[i].y });
-    });
-    CROSS.forEach(function (pair) { var a = pair[0], b = pair[1]; if (byId[a] && byId[b]) edgeDefs.push({ a: a, b: b, x1: byId[a].x, y1: byId[a].y, x2: byId[b].x, y2: byId[b].y }); });
 
     var sel = state.selectedNode;
     var q = state.query.trim().toLowerCase();
     var cf = state.catFilter;
-    var selColor = sel ? (byId[sel] ? byId[sel].color : ACCENT) : ACCENT;
+    var selNode = sel != null ? byId[sel] : null;
+    var selColor = selNode ? selNode.color : ACCENT;
+
+    // neighbours of the selected node: same-branch siblings + explicit cross-links
     var neighbors = {};
-    if (sel != null) edgeDefs.forEach(function (e) { if (e.a === sel) neighbors[e.b] = 1; if (e.b === sel) neighbors[e.a] = 1; });
+    if (selNode) {
+      CROSS.forEach(function (pair) {
+        if (pair[0] === sel && byId[pair[1]]) neighbors[pair[1]] = 1;
+        if (pair[1] === sel && byId[pair[0]]) neighbors[pair[0]] = 1;
+      });
+    }
 
     var matchCount = nodes.filter(matchPost).length;
-    var showLabels = (q || cf) && matchCount <= 18;   // only label when the field is sparse enough to read
+    var showLabels = (q || cf) && matchCount <= 22;
 
-    var edges = edgeDefs.map(function (e) {
-      var active = sel != null && (e.a === sel || e.b === sel);
-      return Object.assign({}, e, {
-        stroke: active ? selColor : "#CBB79A",
-        width: active ? 2.4 : 0.9,
-        opacity: sel == null ? (q || cf ? 0.1 : 0.22) : (active ? 0.85 : 0.05)
-      });
+    // structural mind-map edges: centre → branch (thick curve), branch → post (twig)
+    var trunk = branches.map(function (b) {
+      var active = !cf && !q && sel == null;
+      var on = (cf === b.key) || (selNode && selNode.branch === b.key);
+      return {
+        kind: "trunk", color: b.color,
+        d: "M" + CX + " " + CY + " Q " + ((CX + b.x) / 2 + (b.y - CY) * 0.12) + " " + ((CY + b.y) / 2 - (b.x - CX) * 0.12) + " " + b.x + " " + b.y,
+        opacity: on ? 0.9 : (cf || selNode ? 0.18 : 0.5), width: on ? 3.4 : 2.2
+      };
     });
+    var twigs = nodes.map(function (n) {
+      var b = branches.filter(function (x) { return x.key === n.branch; })[0];
+      var lit = (selNode && (n.id === sel || neighbors[n.id])) || (!selNode && (cf === n.branch));
+      var dim = (selNode && !(n.id === sel || neighbors[n.id])) || (cf && cf !== n.branch) || (q && !matchPost(n));
+      return {
+        x1: b.x, y1: b.y, x2: n.x, y2: n.y, color: n.color,
+        opacity: lit ? 0.6 : (dim ? 0.03 : 0.14), width: lit ? 1.8 : 0.7
+      };
+    });
+    // glowing cross-links only for the selected node (the "mind-map" associations)
+    var links = [];
+    if (selNode) {
+      CROSS.forEach(function (pair) {
+        var a = pair[0], b = pair[1];
+        if ((a === sel || b === sel) && byId[a] && byId[b]) {
+          links.push({ x1: byId[a].x, y1: byId[a].y, x2: byId[b].x, y2: byId[b].y, color: selColor });
+        }
+      });
+    }
+
     var gnodes = nodes.map(function (n) {
       var isSel = n.id === sel;
       var isNb = !!neighbors[n.id];
       var filtered = matchPost(n);
-      var op, lblop;
-      if (sel != null) { op = (isSel || isNb) ? 1 : 0.14; lblop = (isSel || isNb) ? 1 : 0; }
-      else if (q || cf) { op = filtered ? 1 : 0.09; lblop = (filtered && showLabels) ? 1 : 0; }
-      else { op = 1; lblop = 0; }
+      var op, lit;
+      if (selNode) { op = (isSel || isNb) ? 1 : 0.12; lit = isSel || isNb; }
+      else if (q || cf) { op = filtered ? 1 : 0.07; lit = filtered && showLabels; }
+      else { op = 1; lit = false; }
       return Object.assign({}, n, {
-        r: isSel ? 15 : 8, ring: isSel ? 22 : 13, ringOp: isSel ? 0.6 : 0,
-        op: op, lblop: lblop, labelY: n.y + (isSel ? 15 : 8) + 13,
-        short: (n.t.length > 22 ? n.t.slice(0, 20) + "…" : n.t)
+        r: isSel ? 13 : 7, ring: isSel ? 20 : 12, ringOp: isSel ? 0.7 : 0,
+        op: op, lit: lit, labelY: n.y + (isSel ? 13 : 7) + 12,
+        short: (n.t.length > 24 ? n.t.slice(0, 22) + "…" : n.t)
       });
     });
-    return { edges: edges, nodes: gnodes };
+    return { CX: CX, CY: CY, branches: branches, trunk: trunk, twigs: twigs, links: links, nodes: gnodes };
   }
 
   function listCard(p) {
@@ -328,20 +387,45 @@
       '</div>' +
       '<div class="legend">' + legend + '</div>' +
       '<div class="graph-wrap">' +
-        '<div class="graph-box">' +
-          '<svg viewBox="0 0 960 720">' +
-            g.edges.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.stroke + '" stroke-width="' + e.width + '" opacity="' + e.opacity + '"/>'; }).join("") +
-            '<circle cx="480" cy="360" r="34" fill="#3A2C22"/>' +
-            '<circle cx="480" cy="360" r="34" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
-            '<text x="480" y="357" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="13" font-style="italic">Prabir</text>' +
-            '<text x="480" y="371" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="8" letter-spacing="1">JANA</text>' +
-            g.nodes.map(function (n) {
-              return '<g class="gnode" data-node="' + n.id + '">' +
-                '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + n.r + '" fill="' + n.color + '" opacity="' + n.op + '"/>' +
-                '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + n.ring + '" fill="none" stroke="' + n.color + '" stroke-width="2" opacity="' + n.ringOp + '"/>' +
-                (n.lblop > 0 ? '<text x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#5C4A3C" font-family="Spline Sans Mono,monospace" font-size="9" opacity="' + n.lblop + '">' + esc(n.short) + '</text>' : "") +
-              '</g>';
-            }).join("") +
+        '<div class="graph-box" id="graphBox">' +
+          '<div class="graph-hint">Drag to move · scroll to zoom · tap a cell</div>' +
+          '<div class="zoom-ctrl">' +
+            '<button data-zoom="in" aria-label="Zoom in">+</button>' +
+            '<button data-zoom="out" aria-label="Zoom out">−</button>' +
+            '<button data-zoom="reset" aria-label="Reset view">⤢</button>' +
+          '</div>' +
+          '<svg id="graphSvg" viewBox="0 0 1440 1120">' +
+            '<g class="viewport" id="viewport" transform="' + viewTransform() + '">' +
+              // mind-map trunks (centre → each branch)
+              g.trunk.map(function (t) { return '<path d="' + t.d + '" fill="none" stroke="' + t.color + '" stroke-width="' + t.width + '" opacity="' + t.opacity + '" stroke-linecap="round"/>'; }).join("") +
+              // twigs (branch → each post)
+              g.twigs.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.color + '" stroke-width="' + e.width + '" opacity="' + e.opacity + '"/>'; }).join("") +
+              // glowing associations from the selected post
+              g.links.map(function (e) { return '<line x1="' + e.x1 + '" y1="' + e.y1 + '" x2="' + e.x2 + '" y2="' + e.y2 + '" stroke="' + e.color + '" stroke-width="2.2" opacity="0.8" stroke-dasharray="3 4"/>'; }).join("") +
+              // branch hubs with labels (mind-map limbs)
+              g.branches.map(function (b) {
+                var on = state.catFilter === b.key || (g.nodes.some(function (n) { return n.id === state.selectedNode && n.branch === b.key; }));
+                return '<g class="ghub" data-cat="' + b.key + '">' +
+                  '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 17 : 14) + '" fill="' + b.color + '"/>' +
+                  '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + (on ? 24 : 20) + '" fill="none" stroke="' + b.color + '" stroke-width="1.5" opacity="' + (on ? 0.5 : 0.25) + '"/>' +
+                  '<text x="' + b.x + '" y="' + (b.y + 4) + '" text-anchor="middle" fill="#fff" font-family="Spline Sans Mono,monospace" font-size="11" font-weight="600">' + b.count + '</text>' +
+                  '<text x="' + b.x + '" y="' + (b.y - 26) + '" text-anchor="middle" fill="#5C4A3C" font-family="Spline Sans Mono,monospace" font-size="10.5" letter-spacing=".5">' + esc(b.name) + '</text>' +
+                '</g>';
+              }).join("") +
+              // central hub
+              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="38" fill="#3A2C22"/>' +
+              '<circle cx="' + g.CX + '" cy="' + g.CY + '" r="38" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 5" style="transform-box:fill-box;transform-origin:center;animation:ringSpin 28s linear infinite"/>' +
+              '<text x="' + g.CX + '" y="' + (g.CY - 3) + '" text-anchor="middle" fill="#F7EFE2" font-family="Newsreader,serif" font-size="15" font-style="italic">Prabir</text>' +
+              '<text x="' + g.CX + '" y="' + (g.CY + 13) + '" text-anchor="middle" fill="#C9B294" font-family="Spline Sans Mono,monospace" font-size="9" letter-spacing="1.5">JANA</text>' +
+              // post nodes (honeycomb cells)
+              g.nodes.map(function (n) {
+                return '<g class="gnode' + (n.lit ? " lit" : "") + '" data-node="' + n.id + '">' +
+                  (n.ringOp ? '<circle class="halo" cx="' + n.x + '" cy="' + n.y + '" r="' + n.ring + '" fill="none" stroke="' + n.color + '" stroke-width="2" opacity="' + n.ringOp + '"/>' : "") +
+                  '<circle class="node" cx="' + n.x + '" cy="' + n.y + '" r="' + n.r + '" fill="' + n.color + '" opacity="' + n.op + '"/>' +
+                  '<text class="lbl" x="' + n.x + '" y="' + n.labelY + '" text-anchor="middle" fill="#3A2C22" font-family="Spline Sans Mono,monospace" font-size="9.5">' + esc(n.short) + '</text>' +
+                '</g>';
+              }).join("") +
+            '</g>' +
           '</svg>' +
         '</div>' +
         '<div class="detail">' + detail + '</div>' +
@@ -519,6 +603,60 @@
     if (clr) clr.addEventListener("click", function () { state.selectedNode = null; render(); });
     var rst = app.querySelector("[data-reset]");
     if (rst) rst.addEventListener("click", function () { state.query = ""; state.catFilter = null; state.selectedNode = null; render(); });
+
+    /* ---- graph zoom / pan (mind-map navigation) ---- */
+    var box = app.querySelector("#graphBox");
+    var svg = app.querySelector("#graphSvg");
+    if (box && svg) {
+      function svgPoint(cx, cy) {
+        var pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
+        var m = svg.getScreenCTM(); if (!m) return { x: 0, y: 0 };
+        var p = pt.matrixTransform(m.inverse());
+        return { x: p.x, y: p.y };
+      }
+      function applyView() { var vp = app.querySelector("#viewport"); if (vp) vp.setAttribute("transform", viewTransform()); }
+      function zoomAt(p, factor) {
+        var nz = Math.max(0.4, Math.min(4.5, state.view.z * factor));
+        factor = nz / state.view.z;
+        state.view.x = p.x - (p.x - state.view.x) * factor;
+        state.view.y = p.y - (p.y - state.view.y) * factor;
+        state.view.z = nz;
+        applyView();
+      }
+      box.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        zoomAt(svgPoint(e.clientX, e.clientY), e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      }, { passive: false });
+
+      var dragging = false, moved = false, lastP = null;
+      box.addEventListener("pointerdown", function (e) {
+        if (e.target.closest && e.target.closest(".zoom-ctrl")) return;
+        dragging = true; moved = false; lastP = svgPoint(e.clientX, e.clientY);
+        try { box.setPointerCapture(e.pointerId); } catch (x) {}
+        box.classList.add("grabbing");
+      });
+      box.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+        var p = svgPoint(e.clientX, e.clientY);
+        var dx = p.x - lastP.x, dy = p.y - lastP.y;
+        if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) moved = true;
+        state.view.x += dx; state.view.y += dy; lastP = p; applyView();
+      });
+      function endDrag(e) { if (!dragging) return; dragging = false; box.classList.remove("grabbing"); try { box.releasePointerCapture(e.pointerId); } catch (x) {} }
+      box.addEventListener("pointerup", endDrag);
+      box.addEventListener("pointercancel", endDrag);
+      // swallow the click that ends a drag so it doesn't select a node
+      box.addEventListener("click", function (e) { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+
+      app.querySelectorAll("[data-zoom]").forEach(function (b) {
+        b.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var k = b.getAttribute("data-zoom");
+          if (k === "reset") { state.view = { z: 1, x: 0, y: 0 }; applyView(); }
+          else zoomAt({ x: 720, y: 560 }, k === "in" ? 1.3 : 1 / 1.3);
+        });
+      });
+    }
     app.querySelectorAll("[data-cat]").forEach(function (c) {
       c.addEventListener("click", function () {
         var k = c.getAttribute("data-cat");
