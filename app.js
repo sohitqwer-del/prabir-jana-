@@ -475,7 +475,7 @@
           '<h2 class="title">Three decades at the sewing machine</h2>' +
           '<p>Dr. Prabir Jana has spent his career at the intersection of the sewing machine and the spreadsheet. From the floor at Shahi Exports to the classrooms of NIFT Delhi — and most recently as co-founder of Apparel 4.0 Technologies — he has made the apparel-manufacturing world measurably better, one method study at a time.</p>' +
           '<p style="font-size:16px">As Shahi Chair Professor of Industry 4.0, his work spans industrial engineering, ergonomics, PMTS, sewing automation and team working on the production line. But ask any of his students, and they\'ll mention his hands first: forever mid-modification on some machine, a jig clamped in the vice, a folder attachment half-fitted — and a door that was never quite closed.</p>' +
-          '<div class="quote"><div class="q">“You can teach the stopwatch in an afternoon. Teaching someone to respect the operator behind it — that takes a career.”</div><div class="by">— PRABIR JANA</div></div>' +
+          '<div class="quote"><div class="q">“Industrial Engineering is not an Art; it is Science.”</div><div class="by">— PRABIR JANA</div></div>' +
           '<h3 class="serif" style="font-size:26px;margin:34px 0 4px">The journey</h3>' +
           '<div class="timeline"><span class="spine"></span>' + tl + '</div>' +
           '<h3 class="serif" style="font-size:26px;margin:34px 0 4px">On the shelf</h3>' +
