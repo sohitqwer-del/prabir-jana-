@@ -735,6 +735,29 @@
     app.querySelectorAll("[data-reveal]").forEach(function (e) { io.observe(e); });
   }
 
+  /* ---------------- mandatory loading screen ---------------- */
+  function runLoader() {
+    var loader = document.getElementById("loader");
+    if (!loader) return;
+    var quotes = loader.querySelectorAll(".lq");
+    var STEP = 1600, i = 0;
+    if (quotes.length) {
+      quotes[0].classList.add("on");
+      var iv = setInterval(function () {
+        quotes[i].classList.remove("on");
+        i = (i + 1) % quotes.length;
+        quotes[i].classList.add("on");
+      }, STEP);
+    }
+    var MIN = quotes.length ? STEP * quotes.length + 400 : 2600;   // show every quote at least once
+    setTimeout(function () {
+      if (iv) clearInterval(iv);
+      loader.classList.add("done");
+      setTimeout(function () { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 700);
+    }, MIN);
+  }
+
   render();
   pullPraises();
+  runLoader();
 })();

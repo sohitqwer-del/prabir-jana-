@@ -20,6 +20,29 @@
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
+
+/* ---------- mandatory loading screen ---------- */
+#loader{
+  position:fixed;inset:0;z-index:200;display:grid;place-items:center;
+  background:radial-gradient(900px 600px at 50% 35%,#5A4030,#3A2C22 70%);
+  transition:opacity .6s ease,visibility .6s ease;text-align:center;padding:26px;
+}
+#loader.done{opacity:0;visibility:hidden;pointer-events:none;}
+.ld-inner{max-width:560px;display:flex;flex-direction:column;align-items:center;}
+.ld-spool{animation:spool 2.6s ease-in-out infinite;}
+.ld-name{font-family:'Newsreader',serif;font-style:italic;font-size:clamp(26px,5vw,38px);color:#F7EFE2;margin:18px 0 16px;letter-spacing:.3px;}
+.ld-stitch{width:240px;max-width:70vw;height:8px;display:block;margin-bottom:26px;}
+.ld-stitch line{animation:stitchMove 1.2s linear infinite;}
+.ld-quotes{position:relative;min-height:108px;width:100%;}
+.ld-quotes .lq{
+  position:absolute;inset:0;margin:0;opacity:0;transform:translateY(10px);
+  transition:opacity .6s ease,transform .6s ease;
+  font-family:'Newsreader',serif;font-size:clamp(17px,2.6vw,21px);line-height:1.55;color:#EBDCC4;
+  display:flex;align-items:center;justify-content:center;padding:0 6px;
+}
+.ld-quotes .lq.on{opacity:1;transform:none;}
+.ld-src{font-family:'Spline Sans Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#C9B294;margin-top:22px;}
+@media(prefers-reduced-motion:reduce){.ld-spool,.ld-stitch line{animation:none;}}
 body{
   background:var(--bg);
   color:var(--ink);
