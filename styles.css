@@ -235,10 +235,13 @@ h2.title{font-family:'Newsreader',serif;font-weight:500;font-size:clamp(32px,4vw
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
 .search{flex:1;min-width:200px;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line-2);border-radius:12px;padding:10px 14px;}
 .search input{border:none;background:none;outline:none;font-family:inherit;font-size:14px;color:var(--ink);width:100%;}
-.detail{background:var(--card);border:1px solid var(--line-2);border-radius:22px;padding:26px;display:flex;flex-direction:column;min-height:420px;}
-.detail h3{font-family:'Newsreader',serif;font-weight:500;font-size:27px;line-height:1.15;margin:14px 0 12px;}
+.detail{background:var(--card);border:1px solid var(--line-2);border-radius:22px;padding:28px;display:flex;flex-direction:column;min-height:600px;max-height:600px;}
+.detail h3{font-family:'Newsreader',serif;font-weight:500;font-size:28px;line-height:1.18;margin:14px 0 12px;}
 .detail .meta{display:flex;gap:12px;font-family:'Spline Sans Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:14px;}
-.detail .body{font-size:15px;line-height:1.7;color:var(--ink-2);margin:0 0 18px;white-space:pre-line;max-height:230px;overflow:auto;}
+.detail .body{font-size:16px;line-height:1.75;color:var(--ink-2);margin:0 0 18px;white-space:pre-line;flex:1;overflow:auto;padding-right:10px;scrollbar-width:thin;scrollbar-color:#D8C4A6 transparent;}
+.detail .body::-webkit-scrollbar{width:8px;}
+.detail .body::-webkit-scrollbar-thumb{background:#D8C4A6;border-radius:8px;}
+.detail .body::-webkit-scrollbar-track{background:transparent;}
 .detail .empty{margin:auto;text-align:center;padding:20px 0;}
 .detail .empty h3{font-size:22px;margin:16px 0 8px;}
 .detail .empty p{font-size:14px;line-height:1.6;color:var(--ink-3);margin:0 auto;max-width:24em;}
@@ -322,7 +325,8 @@ textarea.fld{margin-top:14px;resize:vertical;}
   .about-aside{position:static;}
   .wall{columns:1;}
   .frow{grid-template-columns:1fr;}
-  .detail{min-height:auto;}
+  .detail{min-height:auto;max-height:none;}
+  .detail .body{overflow:visible;}
 }
 
 /* ---------- mobile polish ---------- */

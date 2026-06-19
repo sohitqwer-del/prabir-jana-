@@ -586,15 +586,16 @@
         setTimeout(function () { state.selectedNode = id; render(); }, 340);
       });
     });
-    // graph nodes + list cards
+    // graph nodes + list cards → open the post in the detail panel
     app.querySelectorAll("[data-node]").forEach(function (g) {
       g.addEventListener("click", function () {
         state.selectedNode = parseInt(g.getAttribute("data-node"), 10);
         var fromList = g.classList.contains("note");
         render();
-        if (fromList) {
-          var box = app.querySelector(".graph-wrap");
-          if (box) try { box.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+        var small = window.innerWidth < 880;
+        if (fromList || small) {
+          var d = app.querySelector(".detail");
+          if (d) try { d.scrollIntoView({ behavior: "smooth", block: small ? "start" : "center" }); } catch (e) {}
         }
       });
     });
@@ -627,24 +628,33 @@
         zoomAt(svgPoint(e.clientX, e.clientY), e.deltaY < 0 ? 1.12 : 1 / 1.12);
       }, { passive: false });
 
-      var dragging = false, moved = false, lastP = null;
+      // Only treat as a pan once the pointer actually MOVES past a threshold.
+      // A plain tap never captures the pointer, so node/card clicks work normally.
+      var DRAG_THRESH = 9;   // viewBox units (~4-5 screen px)
+      var pd = false, dragging = false, moved = false, lastP = null, startP = null, pid = null;
       box.addEventListener("pointerdown", function (e) {
         if (e.target.closest && e.target.closest(".zoom-ctrl")) return;
-        dragging = true; moved = false; lastP = svgPoint(e.clientX, e.clientY);
-        try { box.setPointerCapture(e.pointerId); } catch (x) {}
-        box.classList.add("grabbing");
+        pd = true; dragging = false; moved = false; pid = e.pointerId;
+        startP = lastP = svgPoint(e.clientX, e.clientY);
       });
       box.addEventListener("pointermove", function (e) {
-        if (!dragging) return;
+        if (!pd) return;
         var p = svgPoint(e.clientX, e.clientY);
-        var dx = p.x - lastP.x, dy = p.y - lastP.y;
-        if (Math.abs(dx) > 1.5 || Math.abs(dy) > 1.5) moved = true;
-        state.view.x += dx; state.view.y += dy; lastP = p; applyView();
+        if (!dragging) {
+          if (Math.hypot(p.x - startP.x, p.y - startP.y) < DRAG_THRESH) return;
+          dragging = true; moved = true;
+          try { box.setPointerCapture(pid); } catch (x) {}
+          box.classList.add("grabbing");
+        }
+        state.view.x += p.x - lastP.x; state.view.y += p.y - lastP.y; lastP = p; applyView();
       });
-      function endDrag(e) { if (!dragging) return; dragging = false; box.classList.remove("grabbing"); try { box.releasePointerCapture(e.pointerId); } catch (x) {} }
+      function endDrag() {
+        pd = false;
+        if (dragging) { dragging = false; box.classList.remove("grabbing"); try { box.releasePointerCapture(pid); } catch (x) {} }
+      }
       box.addEventListener("pointerup", endDrag);
       box.addEventListener("pointercancel", endDrag);
-      // swallow the click that ends a drag so it doesn't select a node
+      // swallow only the click that ENDS a real drag, so it doesn't also select a node
       box.addEventListener("click", function (e) { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 
       app.querySelectorAll("[data-zoom]").forEach(function (b) {
